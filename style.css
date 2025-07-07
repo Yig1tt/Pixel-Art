@@ -1,0 +1,38 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f0f0f0;
+    margin: 20px;
+  }
+  
+  h1 {
+    color: #333;
+  }
+  
+  .controls {
+    margin-bottom: 15px;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(16, 20px);
+    grid-template-rows: repeat(16, 20px);
+    gap: 1px;
+    margin: 0 auto;
+    width: fit-content;
+  }
+  
+  .pixel {
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border: 1px solid #ddd;
+    cursor: pointer;
+  }
+  
+  button {
+    padding: 5px 10px;
+    margin-left: 10px;
+    cursor: pointer;
+  }
+  
