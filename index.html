@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Art Boyama Aracı</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      margin: 20px;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .controls {
+      margin-bottom: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .grid {
+      display: grid;
+      margin: 0 auto;
+      width: fit-content;
+    }
+
+    .pixel {
+      width: 20px;
+      height: 20px;
+      background-color: white;
+      border: 1px solid #ddd;
+      cursor: pointer;
+    }
+
+    button, select, input[type="color"] {
+      padding: 5px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .palette {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .palette div {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #333;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      .pixel {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🖌️ Yiğit Boyamacılık 🖌️</h1>
+
+  <div class="controls">
+    <label>Renk Seç: <input type="color" id="colorPicker" value="#000000"></label>
+    <button id="eraserToggle">Silgi Modu: Kapalı</button>
+    <button id="undoBtn">Geri Al</button>
+    <button id="redoBtn">İleri Al</button>
+    <button id="clearBtn">Temizle</button>
+    <select id="gridSize">
+      <option value="8">8x8</option>
+      <option value="16" selected>16x16</option>
+      <option value="32">32x32</option>
+    </select>
+    <button id="exportBtn">PNG Dışa Aktar</button>
+  </div>
+
+  <div class="palette" id="colorPalette"></div>
+  <div id="pixelGrid" class="grid"></div>
+  <canvas id="exportCanvas" style="display:none"></canvas>
+
+  <script>
+    const grid = document.getElementById("pixelGrid");
+    const colorPicker = document.getElementById("colorPicker");
+    const clearBtn = document.getElementById("clearBtn");
+    const eraserToggle = document.getElementById("eraserToggle");
+    const undoBtn = document.getElementById("undoBtn");
+    const redoBtn = document.getElementById("redoBtn");
+    const gridSizeSelect = document.getElementById("gridSize");
+    const exportBtn = document.getElementById("exportBtn");
+    const canvas = document.getElementById("exportCanvas");
+    const ctx = canvas.getContext("2d");
+    const palette = document.getElementById("colorPalette");
+
+    let isErasing = false;
+    let isDrawing = false;
+    let gridSize = 16;
+
+    const paletteColors = ["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#FFFFFF"];
+
+    let history = [];
+    let redoStack = [];
+
+    function saveHistory() {
+      const snapshot = Array.from(document.querySelectorAll(".pixel")).map(p => p.style.backgroundColor);
+      history.push(snapshot);
+      if (history.length > 100) history.shift(); 
+      redoStack = [];
+    }
+
+    paletteColors.forEach(color => {
+      const swatch = document.createElement("div");
+      swatch.style.backgroundColor = color;
+      swatch.addEventListener("click", () => {
+        colorPicker.value = color;
+      });
+      palette.appendChild(swatch);
+    });
+
+    function createGrid(size) {
+      grid.innerHTML = "";
+      grid.style.gridTemplateColumns = `repeat(${size}, 20px)`;
+      grid.style.gridTemplateRows = `repeat(${size}, 20px)`;
+
+      for (let i = 0; i < size * size; i++) {
+        const pixel = document.createElement("div");
+        pixel.classList.add("pixel");
+
+        pixel.addEventListener("mousedown", () => {
+          isDrawing = true;
+          saveHistory();
+          pixel.style.backgroundColor = isErasing ? "white" : colorPicker.value;
+        });
+
+        pixel.addEventListener("mouseover", () => {
+          if (isDrawing) {
+            pixel.style.backgroundColor = isErasing ? "white" : colorPicker.value;
+          }
+        });
+
+        grid.appendChild(pixel);
+      }
+    }
+
+    document.body.addEventListener("mouseup", () => {
+      isDrawing = false;
+    });
+
+    clearBtn.addEventListener("click", () => {
+      saveHistory();
+      document.querySelectorAll(".pixel").forEach(pixel => {
+        pixel.style.backgroundColor = "white";
+      });
+    });
+
+    eraserToggle.addEventListener("click", () => {
+      isErasing = !isErasing;
+      eraserToggle.textContent = `Silgi Modu: ${isErasing ? "Açık" : "Kapalı"}`;
+    });
+
+    gridSizeSelect.addEventListener("change", () => {
+      gridSize = parseInt(gridSizeSelect.value);
+      createGrid(gridSize);
+    });
+
+    exportBtn.addEventListener("click", () => {
+      const pixels = document.querySelectorAll(".pixel");
+      canvas.width = gridSize;
+      canvas.height = gridSize;
+
+      pixels.forEach((pixel, i) => {
+        const color = window.getComputedStyle(pixel).backgroundColor;
+        ctx.fillStyle = color;
+        ctx.fillRect(i % gridSize, Math.floor(i / gridSize), 1, 1);
+      });
+
+      const link = document.createElement("a");
+      link.download = "pixel-art.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+
+    undoBtn.addEventListener("click", () => {
+      if (history.length > 0) {
+        const lastState = history.pop();
+        const pixels = document.querySelectorAll(".pixel");
+        const currentState = Array.from(pixels).map(p => p.style.backgroundColor);
+        redoStack.push(currentState);
+        lastState.forEach((color, i) => {
+          pixels[i].style.backgroundColor = color;
+        });
+      }
+    });
+
+    redoBtn.addEventListener("click", () => {
+      if (redoStack.length > 0) {
+        const nextState = redoStack.pop();
+        const pixels = document.querySelectorAll(".pixel");
+        const currentState = Array.from(pixels).map(p => p.style.backgroundColor);
+        history.push(currentState);
+        nextState.forEach((color, i) => {
+          pixels[i].style.backgroundColor = color;
+        });
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "e") {
+        isErasing = true;
+        eraserToggle.textContent = "Silgi Modu: Açık";
+      } else if (e.key === "r") {
+        isErasing = false;
+        eraserToggle.textContent = "Silgi Modu: Kapalı";
+      } else if (e.key === "c") {
+        clearBtn.click();
+      } else if (e.ctrlKey && e.key === "z") {
+        undoBtn.click();
+      } else if (e.ctrlKey && e.key === "y") {
+        redoBtn.click();
+      }
+    });
+
+    createGrid(gridSize);
+  </script>
+</body>
+</html>
